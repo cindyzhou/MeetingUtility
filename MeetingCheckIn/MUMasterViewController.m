@@ -7,23 +7,28 @@
 //
 
 #import "MUMasterViewController.h"
-
+#import "MUMeeting.h"
 #import "MUDetailViewController.h"
+
 
 @interface MUMasterViewController () {
     NSMutableArray *_objects;
 }
 @end
 
+static NSString *const BaseURLString = @"http://shjmg.cn/api/";
+
 @implementation MUMasterViewController
+
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
-        self.title = NSLocalizedString(@"Master", @"Master");
+        self.title = NSLocalizedString(@"城市", @"城市");
         self.clearsSelectionOnViewWillAppear = NO;
-        self.contentSizeForViewInPopover = CGSizeMake(320.0, 600.0);
+        self.contentSizeForViewInPopover = CGSizeMake(520.0, 600.0);
+        self.meetingList = [[NSMutableArray alloc] initWithCapacity:2];
     }
     return self;
 }
@@ -31,11 +36,10 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-	// Do any additional setup after loading the view, typically from a nib.
-    self.navigationItem.leftBarButtonItem = self.editButtonItem;
-
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject:)];
-    self.navigationItem.rightBarButtonItem = addButton;
+    
+    self.navigationController.navigationBar.tintColor = [UIColor blackColor];
+    
+    [self getMeetingList];
 }
 
 - (void)didReceiveMemoryWarning
@@ -44,14 +48,56 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)insertNewObject:(id)sender
-{
-    if (!_objects) {
-        _objects = [[NSMutableArray alloc] init];
+- (void)getMeetingList {
+    
+    if (self.meetingList && [self.meetingList count]>0) {
+        self.meetingList = nil;
     }
-    [_objects insertObject:[NSDate date] atIndex:0];
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+    
+    NSString *weatherUrl = [NSString stringWithFormat:@"%@mlist.php?", BaseURLString];
+    NSURL *url = [NSURL URLWithString:weatherUrl];
+    NSURLRequest *request = [NSURLRequest requestWithURL:url];
+    
+    AFJSONRequestOperation *operation =
+    [AFJSONRequestOperation JSONRequestOperationWithRequest:request
+                                                    success:^(NSURLRequest *request, NSHTTPURLResponse *response, id JSON)
+     {
+         NSDictionary *result = (NSDictionary *)JSON;
+         NSInteger eid = [[result objectForKey:@"eid"] integerValue];
+         NSArray *list = (NSArray*)[result objectForKey:@"s"];
+         [self saveMeetingLists:list];
+         if (eid != 0) {
+             UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@""
+                                                         message:@"Wrong!"
+                                                        delegate:nil
+                                               cancelButtonTitle:@"关闭"
+                                               otherButtonTitles:nil];
+             [alert show];
+             return;
+         }
+         [self.tableView reloadData];
+     } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON)
+     {
+         UIAlertView *av = [[UIAlertView alloc] initWithTitle:@"Error Retrieving Weather"
+                                                      message:[NSString stringWithFormat:@"%@",error]
+                                                     delegate:nil
+                                            cancelButtonTitle:@"OK"
+                                            otherButtonTitles:nil];
+         [av show];
+     }];
+    
+    // 5
+    [operation start];
+    
+}
+
+- (void)saveMeetingLists:(NSArray*) list {
+    for (int i=0; i < [list count]; i++) {
+        NSDictionary *meetting = [list objectAtIndex:i];
+        MUMeeting *newMeeting = [[MUMeeting alloc] initWithMid:[[meetting objectForKey:@"mid"] integerValue] location:[meetting objectForKey:@"location"]
+    description:[meetting objectForKey:@"description"] date:[meetting objectForKey:@"date"] address:[meetting objectForKey:@"date"]];
+        [self.meetingList addObject:newMeeting];
+    }
 }
 
 #pragma mark - Table View
@@ -63,7 +109,11 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return _objects.count;
+    return self.meetingList.count;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return 75;
 }
 
 // Customize the appearance of table view cells.
@@ -74,49 +124,34 @@
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
+    
+        UILabel *nLable = [[UILabel alloc] init];
+        nLable.textColor = [UIColor whiteColor];
+        nLable.backgroundColor = [UIColor clearColor];
+        [cell addSubview:nLable];
+        nLable.frame = CGRectMake(10, 10, 200, 30);
+        nLable.tag = 1;
+        
+        UILabel *dLable = [[UILabel alloc] init];
+        dLable.textColor = [UIColor redColor];
+        dLable.backgroundColor = [UIColor clearColor];
+        [cell addSubview:dLable];
+        dLable.frame = CGRectMake(10, 45, 200, 30);
+        dLable.tag = 2;
     }
 
-
-    NSDate *object = _objects[indexPath.row];
-    cell.textLabel.text = [object description];
+    UILabel *lable = (UILabel*)[cell viewWithTag:1];
+    MUMeeting *object = self.meetingList[indexPath.row];
+    lable.text = [object location];
+    
+    lable = (UILabel*)[cell viewWithTag:2];
+    lable.text = [object date];
     return cell;
 }
 
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
-}
-
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        [_objects removeObjectAtIndex:indexPath.row];
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
-    }
-}
-
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
-{
-}
-*/
-
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSDate *object = _objects[indexPath.row];
+    MUMeeting *object = self.meetingList[indexPath.row];
     self.detailViewController.detailItem = object;
 }
 

@@ -11,7 +11,8 @@
 @class MUDetailViewController;
 
 @interface MUMasterViewController : UITableViewController
-
+{
+}
 @property (strong, nonatomic) MUDetailViewController *detailViewController;
-
+@property (strong, nonatomic) NSMutableArray *meetingList;
 @end

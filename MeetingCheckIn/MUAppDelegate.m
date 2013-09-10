@@ -7,9 +7,7 @@
 //
 
 #import "MUAppDelegate.h"
-
 #import "MUMasterViewController.h"
-
 #import "MUDetailViewController.h"
 
 @implementation MUAppDelegate
@@ -21,10 +19,11 @@
 
     MUMasterViewController *masterViewController = [[MUMasterViewController alloc] initWithNibName:@"MUMasterViewController" bundle:nil];
     UINavigationController *masterNavigationController = [[UINavigationController alloc] initWithRootViewController:masterViewController];
-
+    
     MUDetailViewController *detailViewController = [[MUDetailViewController alloc] initWithNibName:@"MUDetailViewController" bundle:nil];
     UINavigationController *detailNavigationController = [[UINavigationController alloc] initWithRootViewController:detailViewController];
-
+    detailNavigationController.view.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:@"Purple-ios-7-wallpaper.jpg"]];
+    
     masterViewController.detailViewController = detailViewController;
 
     self.splitViewController = [[UISplitViewController alloc] init];
